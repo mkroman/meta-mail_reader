@@ -1,0 +1,28 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    ffi (1.10.0)
+    little-plugger (1.1.4)
+    logging (2.2.2)
+      little-plugger (~> 1.1)
+      multi_json (~> 1.10)
+    magic (0.2.9)
+      ffi (>= 0.6.3)
+    mail (2.7.1)
+      mini_mime (>= 0.1.1)
+    mini_mime (1.0.1)
+    multi_json (1.13.1)
+    streamio-ffmpeg (3.0.2)
+      multi_json (~> 1.8)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  logging (~> 2.2)
+  magic (~> 0.2)
+  mail (~> 2.7)
+  streamio-ffmpeg (~> 3.0)
+
+BUNDLED WITH
+   2.0.1

@@ -1,0 +1,125 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+$LOAD_PATH.unshift File.join(__dir__, '../lib')
+
+require 'meta/mail_reader'
+
+require 'shellwords'
+require 'securerandom'
+
+require 'magic'
+require 'mail'
+require 'logging'
+require 'streamio-ffmpeg'
+
+Logging.logger.root.level = :debug
+Logging.logger.root.appenders = Logging.appenders.stdout
+
+$logger = Logging.logger['main']
+
+def strip_image_exif filename
+  $logger.info "Stripping EXIF data from #{filename}"
+
+  %x{exiv2 rm "#{filename}"}
+  filename
+end
+
+# Rotate an image based off of the rotation exif data
+def rotate_image_from_exif path
+  $logger.info "Rotating image #{path}"
+  filename = Shellwords.escape path
+
+  %x{exiftran -i -a "#{filename}"}
+  path
+end
+
+# Remux the file at `path` to an mp4 file.
+#
+# @returns The path to the remuxed file.
+def transcode_video path
+  dirname = File.dirname path
+  filename = File.basename path, '.*'
+  extension = File.extname path
+
+  output_path = if extension == '.mp4'
+                  File.join dirname, "#{filename}-2.mp4"
+                else
+                  File.join dirname, "#{filename}.mp4"
+                end
+
+  movie = FFMPEG::Movie.new path
+
+  video_codec = 'copy'
+  audio_codec = 'copy'
+
+  if movie.video_codec != 'h264'
+    video_codec = 'h264'
+  end
+
+  if movie.audio_codec != 'aac'
+    audio_codec = 'aac'
+  end
+
+  movie.transcode output_path, video_codec: video_codec, audio_codec: audio_codec
+
+  output_path
+end
+
+def upload_attachment attachment_path
+  attachment_path
+end
+
+imap_host = ENV['IMAP_HOST'] || 'imap.gmail.com'
+imap_port = ENV['IMAP_PORT'] || 993
+username = ENV['IMAP_USERNAME'] or raise 'IMAP_USERNAME is missing'
+password = ENV['IMAP_PASSWORD'] or raise 'IMAP_PASSWORD is missing'
+
+# Initialize the Mail library.
+Mail.defaults do
+  retriever_method :imap,
+                   address: imap_host,
+                   port: imap_port,
+                   user_name: username,
+                   password: password,
+                   enable_ssl: true
+end
+
+attachment_root_dir = File.join Dir.pwd, 'data'
+
+mail_reader = MailReader.new attachment_root_dir
+mail_reader.on :new_attachment do |mail, attachment, attachment_path|
+  mime_type = Magic.guess_file_mime_type attachment_path
+  file_type = if mime_type.start_with? 'video/' then :video
+              elsif mime_type.start_with? 'image/' then :image
+              end
+
+  path = case file_type
+         when :video
+           transcode_video attachment_path
+         when :image
+           path = rotate_image_from_exif attachment_path
+           strip_image_exif path
+         end
+
+  $logger.info "Upload #{path}"
+  result = upload_attachment path
+end
+
+if $PROGRAM_NAME == __FILE__
+  loop do
+    mail_reader.poll
+
+    sleep 15
+  end
+end
+
+MAIL_BUCKET = 'bucket-fervent-feistel'
+
+credentials = Aws::Credentials.new(ENV['SCW_ACCESS_KEY'],
+                                   ENV['SCW_SECRET_KEY'])
+
+client = Aws::S3::Client.new(credentials: credentials,
+                             endpoint: 'https://s3.nl-ams.scw.cloud',
+                             region: 'nl-ams')
+
+
