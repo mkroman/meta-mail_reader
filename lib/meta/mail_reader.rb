@@ -23,7 +23,6 @@ class MailReader
       if attachment_count.zero?
         @log.info "Skipping e-mail #{mail.subject} from #{mail.from} as " \
           'this e-mail has no attachments'
-
         next
       end
 
@@ -36,11 +35,11 @@ class MailReader
 
   def process_mail mail
     mail.attachments.slice(0...MAX_ATTACHMENT_COUNT).each do |attachment|
-      process_attachment mail, attachment
+      process_mail_attachment mail, attachment
     end
   end
 
-  def process_attachment mail, attachment
+  def process_mail_attachment mail, attachment
     # Discard non-image and non-video attachments.
     return unless attachment.content_type.start_with? 'image/', 'video/'
 
@@ -55,27 +54,10 @@ class MailReader
     warn error.backtrace.join "\n"
   end
 
-  def postprocess_image_attachment path
-    rotate_image_from_exif path
-    strip_exif_data path
-  end
-
-  def postprocess_video_attachment path
-    # Transcode the video if needed
-    new_path = transcode_video path
-
-    # Delete the old video file if we transcoded the old one
-    File.unlink path if new_path
-
-    new_path
-  end
-
   # Writes the attachment body to temporary storage and then yields the file
   # path.
   def save_attachment attachment
     filename = sanitize_filename attachment.filename
-    basename = File.basename filename, '.*'
-    extension = File.extname filename
     path = File.join @attachment_root_dir, filename
 
     File.open path, 'w+b', 0o644 do |file|

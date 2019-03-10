@@ -1,7 +1,23 @@
 GEM
   remote: https://rubygems.org/
   specs:
+    aws-eventstream (1.0.1)
+    aws-partitions (1.143.0)
+    aws-sdk-core (3.46.2)
+      aws-eventstream (~> 1.0)
+      aws-partitions (~> 1.0)
+      aws-sigv4 (~> 1.0)
+      jmespath (~> 1.0)
+    aws-sdk-kms (1.13.0)
+      aws-sdk-core (~> 3, >= 3.39.0)
+      aws-sigv4 (~> 1.0)
+    aws-sdk-s3 (1.31.0)
+      aws-sdk-core (~> 3, >= 3.39.0)
+      aws-sdk-kms (~> 1)
+      aws-sigv4 (~> 1.0)
+    aws-sigv4 (1.0.3)
     ffi (1.10.0)
+    jmespath (1.4.0)
     little-plugger (1.1.4)
     logging (2.2.2)
       little-plugger (~> 1.1)
@@ -12,6 +28,7 @@ GEM
       mini_mime (>= 0.1.1)
     mini_mime (1.0.1)
     multi_json (1.13.1)
+    nanoid (2.0.0)
     streamio-ffmpeg (3.0.2)
       multi_json (~> 1.8)
 
@@ -19,9 +36,11 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  aws-sdk-s3 (~> 1.31)
   logging (~> 2.2)
   magic (~> 0.2)
   mail (~> 2.7)
+  nanoid (~> 2.0)
   streamio-ffmpeg (~> 3.0)
 
 BUNDLED WITH

@@ -1,7 +1,13 @@
 # frozen_string_literal: true
 
+require 'logging'
+
 module Meta
   class PostProcessor
+    def self.id
+      raise NotImplementedError
+    end
+
     def self.media type
       @media = type
     end
@@ -10,8 +16,8 @@ module Meta
       @processors ||= []
     end
 
-    def self.included klass
-      @log ||= Logging.logger[self]
+    def self.inherited klass
+      @log ||= ::Logging.logger[self]
       @log.debug "Added postprocessor #{klass}"
 
       processors << klass
@@ -22,8 +28,11 @@ module Meta
     end
 
     def run
+      raise NotImplementedError
     end
   end
 end
 
-
+Dir.glob(File.join(__dir__, 'postprocessors/*.rb')).each do |file|
+  require_relative file
+end
