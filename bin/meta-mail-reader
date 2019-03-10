@@ -14,13 +14,35 @@ require 'logging'
 require 'streamio-ffmpeg'
 require 'aws-sdk-s3'
 
+Logging.color_scheme(
+  'meta',
+  levels: {
+    debug: :white,
+    info: :cyan,
+    warn: :yellow,
+    error: :red,
+    fatal: :orange
+  },
+  date: :white,
+  logger: %i[white bold],
+  message: :white
+)
+
+Logging.appenders.stdout(
+  'stdout',
+  layout: Logging.layouts.pattern(
+    pattern: '%d %-16.16c %-5l %m\n',
+    date_pattern: '%Y-%m-%d %H:%M:%S',
+    color_scheme: 'meta'
+  )
+)
+
 Logging.logger.root.level = :debug
 Logging.logger.root.appenders = Logging.appenders.stdout
 
 require 'meta/mail_reader'
+require 'meta/mail_handler'
 require 'meta/postprocessor'
-
-class NoPipelineError < StandardError; end
 
 REQUIRED_ENV_KEYS = %w[AWS_SECRET_KEY AWS_ACCESS_KEY S3_BUCKET_NAME
                        S3_REGION].freeze
@@ -32,56 +54,10 @@ REQUIRED_ENV_KEYS.each do |name|
   end
 end
 
-$logger = Logging.logger['main']
-
-def aws_credentials
-  @aws_credentials ||= Aws::Credentials.new ENV['AWS_ACCESS_KEY'],
-                                            ENV['AWS_SECRET_KEY']
-end
-
-def s3_client
-  @s3_client ||= Aws::S3::Client.new(credentials: aws_credentials)
-end
-
-def s3_bucket_name
-  @s3_bucket_name ||= ENV['S3_BUCKET_NAME']
-end
-
-def upload_attachment attachment_path
-  filename = File.basename attachment_path
-  hexdigest = Digest::SHA256.file(attachment_path).hexdigest
-  extension = File.extname filename
-  remote_filename = "#{hexdigest}#{extension}"
-  key = File.join 'mails', remote_filename
-
-  $logger.debug "Remote bucket key: #{key}"
-
-  begin
-    object = s3_client.head_object bucket: s3_bucket_name, key: key
-
-    $logger.debug 'The remote file already exists. Not uploading.'
-  rescue Aws::S3::Errors::Forbidden => _err
-    # The file doesn't already exist, so we'll upload it
-    File.open attachment_path, 'rb' do |file|
-      object = s3_client.put_object body: file,
-                                    acl: 'public-read',
-                                    bucket: s3_bucket_name,
-                                    key: key
-
-    end
-  end
-
-  return nil unless object
-
-  key
-end
-
 imap_host = ENV['IMAP_HOST'] || 'imap.gmail.com'
 imap_port = ENV['IMAP_PORT'] || 993
 username  = ENV['IMAP_USERNAME'] or raise 'IMAP_USERNAME is missing'
 password  = ENV['IMAP_PASSWORD'] or raise 'IMAP_PASSWORD is missing'
-
-attachment_root_dir = File.join Dir.pwd, 'data'
 
 # Initialize the Mail library.
 Mail.defaults do
@@ -93,61 +69,13 @@ Mail.defaults do
                    enable_ssl: true
 end
 
+attachment_root_dir = File.join Dir.pwd, 'data'
 
-$logger.debug "Attachments will be saved in `#{attachment_root_dir}'"
+mail_reader = Meta::MailReader.new attachment_root_dir: attachment_root_dir
+mail_handler = Meta::MailHandler.new
 
-PIPELINE = {
-  image: %i[image_exif_rotator exif_remover],
-  video: %i[video_transcoder]
-}
-
-def run_pipeline attachment_path, type
-  pipeline = PIPELINE[type]
-
-  unless pipeline
-    raise NoPipelineError, "Attachment #{attachment_path} was neither audio " \
-      'nor video.'
-  end
-
-  processors = PIPELINE[type].map do |id|
-    Meta::PostProcessor.processors.find { |p| p.id == id }
-  end
-
-  path = attachment_path
-
-  processors.each do |processor_class|
-    $logger.debug "Instantiating postprocessor #{processor_class}"
-    processor = processor_class.new path
-
-    $logger.debug "Running postprocessor #{processor}"
-    path = processor.run
-  end
-
-  path
-end
-
-mail_reader = MailReader.new attachment_root_dir
-mail_reader.on :new_attachment do |_mail, _attachment, attachment_path|
-  mime_type = Magic.guess_file_mime_type attachment_path
-  file_type = if mime_type.start_with? 'video/' then :video
-              elsif mime_type.start_with? 'image/' then :image
-              end
-
-  begin
-    path = run_pipeline attachment_path, file_type
-
-    $logger.info "Uploading #{path}"
-    result = upload_attachment path
-
-    if result
-      object = Aws::S3::Object.new s3_bucket_name, result, client: s3_client
-      url = object.public_url
-
-      $logger.debug "File has been uploaded and can be accessed at #{url}"
-    end
-  rescue NoPipelineError
-    $logger.warn 'No related pipeline for the attachment found'
-  end
+mail_reader.on :attachment do |mail, attachment, attachment_path|
+  mail_handler.new_attachment mail, attachment, attachment_path
 end
 
 if $PROGRAM_NAME == __FILE__
