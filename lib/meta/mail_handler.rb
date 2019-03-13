@@ -6,7 +6,8 @@ module Meta
   class PipelineNotFoundError < StandardError; end
 
   class MailHandler
-    VIDEO_MIME_TYPES = %w[video/mp4 video/webm video/quicktime video/x-ms-asf].freeze
+    VIDEO_MIME_TYPES = %w[video/mp4 video/webm video/quicktime
+                          video/x-ms-asf].freeze
     IMAGE_MIME_TYPES = %w[image/jpeg image/png].freeze
 
     PIPELINES = {
@@ -20,21 +21,40 @@ module Meta
       @bucket_name = ENV['S3_BUCKET_NAME']
     end
 
-    def new_attachment mail, attachment, attachment_path
-      file_type = determine_file_type attachment_path
+    def meta_console
+      TCPSocket.open 'meta', 31337
+    end
+
+    def new_attachment mail, attachment, path
+      file_type = determine_file_type path
 
       begin
-        path = run_pipeline attachment_path, file_type
+        path = run_pipeline path, file_type
         result = upload_mail_attachment mail, attachment, path
 
         if result
           object = Aws::S3::Object.new @bucket_name, result, client: @s3
           url = object.public_url
+          sender = mail.from.join ', '
 
           @log.debug "File has been uploaded and can be accessed at #{url}"
+
+          if mail.subject && !mail.subject.empty?
+            meta_console.puts "\x0310> “\x0f#{mail.subject}\x0310” from\x0f #{sender}\x0310 @ #{url}"
+          else
+            meta_console.puts "\x0310>\x0f Mail\x0310 from #{sender}\x0310 @ #{url}"
+          end
         end
+
       rescue PipelineNotFoundError
         @log.warn 'No related pipeline for the attachment found'
+      ensure
+        # Remove the local file.
+        if File.exist? path
+          @log.debug "Removing file `#{path}'"
+
+          File.unlink path
+        end
       end
     end
 
@@ -64,8 +84,6 @@ module Meta
     end
 
     def upload_mail_attachment mail, attachment, attachment_path
-      @log.info "Uploading #{attachment_path}"
-
       filename = File.basename attachment_path
       hexdigest = Digest::SHA256.file(attachment_path).hexdigest
       extension = File.extname filename

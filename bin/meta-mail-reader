@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
+
 $LOAD_PATH.unshift File.join(__dir__, '../lib')
 
 require 'pp'
@@ -43,10 +44,9 @@ Logging.logger.root.appenders = Logging.appenders.stdout
 require 'meta/mail_reader'
 require 'meta/mail_handler'
 require 'meta/postprocessor'
+require 'meta/version'
 
-REQUIRED_ENV_KEYS = %w[AWS_SECRET_KEY AWS_ACCESS_KEY S3_BUCKET_NAME
-                       S3_REGION].freeze
-
+REQUIRED_ENV_KEYS = %w[AWS_SECRET_KEY AWS_ACCESS_KEY S3_BUCKET_NAME].freeze
 REQUIRED_ENV_KEYS.each do |name|
   unless ENV.key? name
     raise 'The following environment keys are required: ' \
@@ -61,12 +61,14 @@ password  = ENV['IMAP_PASSWORD'] or raise 'IMAP_PASSWORD is missing'
 
 # Initialize the Mail library.
 Mail.defaults do
-  retriever_method :imap,
-                   address: imap_host,
-                   port: imap_port,
-                   user_name: username,
-                   password: password,
-                   enable_ssl: true
+  retriever_method(
+    :imap,
+    address: imap_host,
+    port: imap_port,
+    user_name: username,
+    password: password,
+    enable_ssl: true
+  )
 end
 
 attachment_root_dir = File.join Dir.pwd, 'data'
@@ -85,5 +87,3 @@ if $PROGRAM_NAME == __FILE__
     sleep 15
   end
 end
-
-

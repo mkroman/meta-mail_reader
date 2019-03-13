@@ -31,7 +31,6 @@ module Meta
 
         # Remove the old video file.
         File.unlink @path
-
         @path = output_path
 
         output_path

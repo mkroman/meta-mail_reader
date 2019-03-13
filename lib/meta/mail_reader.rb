@@ -10,6 +10,7 @@ module Meta
       @callbacks = {}
       @attachment_root_dir = attachment_root_dir
 
+      @log.info "MailReader version #{Meta::VERSION}"
       @log.debug "Attachments will be saved in `#{attachment_root_dir}'"
     end
 
@@ -48,7 +49,7 @@ module Meta
 
       emit :attachment, mail, attachment, attachment_path
     rescue StandardError => error
-      @log.error "Failed to process attachment!"
+      @log.error 'Failed to process attachment!'
       @log.error error
     end
 
