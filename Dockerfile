@@ -3,7 +3,8 @@ MAINTAINER Mikkel Kroman <mk@maero.dk>
 
 # Install dependencies.
 RUN apt-get update && \
-  apt-get install -y exiv2 exiftran ffmpeg file
+  apt-get install -y exiv2 exiftran ffmpeg file && \
+  rm -rf /var/lib/apt/lists/*
 
 # Set the timezone.
 RUN ln -sf /usr/share/zoneinfo/Europe/Copenhagen /etc/localtime && \
@@ -18,6 +19,7 @@ WORKDIR /usr/src/app
 
 COPY . .
 
-RUN bundle install
+RUN mkdir data && \
+  bundle install
 
 ENTRYPOINT ruby /usr/src/app/bin/meta-mail-reader

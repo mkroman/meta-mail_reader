@@ -25,6 +25,12 @@ module Meta
       TCPSocket.open 'meta', 31337
     end
 
+    # Called by the +MailReader+ for each attachment in a newly received e-mail.
+    #
+    # @param [Mail::Message] mail the whole mail instance
+    # @param [Mail::Attachment] attachment the attachment to process
+    # @param [String] path the local file path to where the attached file is
+    #   saved.
     def new_attachment mail, attachment, path
       file_type = determine_file_type path
 
