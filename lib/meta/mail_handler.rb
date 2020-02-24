@@ -22,7 +22,7 @@ module Meta
     end
 
     def meta_console
-      TCPSocket.open 'meta', 31337
+      TCPSocket.open 'localhost', 31337
     end
 
     # Called by the +MailReader+ for each attachment in a newly received e-mail.
