@@ -66,7 +66,7 @@ jobs:
 workflows:
   version: 2
 
-  test_and_release:
+  test_and_build:
     jobs:
       - test
       - build
@@ -74,6 +74,25 @@ workflows:
           filters:
             branches:
               ignore: /.*/
+            tags:
+              only: /^v.+/
+
+          requires:
+            - test
+            - build
+
+  test_and_release:
+    jobs:
+      - test:
+          filters:
+            tags:
+              only: /^v.+/
+      - build:
+          filters:
+            tags:
+              only: /^v.+/
+      - release:
+          filters:
             tags:
               only: /^v.+/
 
