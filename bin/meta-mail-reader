@@ -1,50 +1,7 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-$LOAD_PATH.unshift File.join(__dir__, '../lib')
-
-require 'pp'
-require 'shellwords'
-require 'digest/sha2'
-require 'securerandom'
-
-require 'nanoid'
-require 'magic'
-require 'mail'
-require 'logging'
-require 'streamio-ffmpeg'
-require 'aws-sdk-s3'
-
-Logging.color_scheme(
-  'meta',
-  levels: {
-    debug: :white,
-    info: :cyan,
-    warn: :yellow,
-    error: :red,
-    fatal: :orange
-  },
-  date: :white,
-  logger: %i[white bold],
-  message: :white
-)
-
-Logging.appenders.stdout(
-  'stdout',
-  layout: Logging.layouts.pattern(
-    pattern: '%d %-16.16c %-5l %m\n',
-    date_pattern: '%Y-%m-%d %H:%M:%S',
-    color_scheme: 'meta'
-  )
-)
-
-Logging.logger.root.level = :debug
-Logging.logger.root.appenders = Logging.appenders.stdout
-
-require 'meta/mail_reader'
-require 'meta/mail_handler'
-require 'meta/postprocessor'
-require 'meta/version'
+require_relative '../lib/meta/mail_reader'
 
 REQUIRED_ENV_KEYS = %w[AWS_SECRET_KEY AWS_ACCESS_KEY S3_BUCKET_NAME].freeze
 REQUIRED_ENV_KEYS.each do |name|
@@ -56,8 +13,8 @@ end
 
 imap_host = ENV['IMAP_HOST'] || 'imap.gmail.com'
 imap_port = ENV['IMAP_PORT'] || 993
-username  = ENV['IMAP_USERNAME'] or raise 'IMAP_USERNAME is missing'
-password  = ENV['IMAP_PASSWORD'] or raise 'IMAP_PASSWORD is missing'
+username  = ENV['IMAP_USERNAME'] || raise('IMAP_USERNAME is missing')
+password  = ENV['IMAP_PASSWORD'] || raise('IMAP_PASSWORD is missing')
 
 # Initialize the Mail library.
 Mail.defaults do
@@ -73,8 +30,8 @@ end
 
 attachment_root_dir = File.join Dir.pwd, 'data'
 
-mail_reader = Meta::MailReader.new attachment_root_dir: attachment_root_dir
-mail_handler = Meta::MailHandler.new
+mail_reader = Meta::MailReader::Client.new attachment_root_dir: attachment_root_dir
+mail_handler = Meta::MailReader::Handler.new
 
 mail_reader.on :attachment do |mail, attachment, attachment_path|
   mail_handler.new_attachment mail, attachment, attachment_path
