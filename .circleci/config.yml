@@ -72,6 +72,8 @@ workflows:
       - build
       - release:
           filters:
+            branches:
+              ignore: /.*/
             tags:
               only: /^v.+/
 
