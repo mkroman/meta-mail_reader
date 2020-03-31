@@ -84,14 +84,20 @@ workflows:
   test_and_release:
     jobs:
       - test:
+          branches:
+            ignore: /.*/
           filters:
             tags:
               only: /^v.+/
       - build:
+          branches:
+            ignore: /.*/
           filters:
             tags:
               only: /^v.+/
       - release:
+          branches:
+            ignore: /.*/
           filters:
             tags:
               only: /^v.+/
