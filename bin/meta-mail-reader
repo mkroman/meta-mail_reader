@@ -31,11 +31,6 @@ end
 attachment_root_dir = File.join Dir.pwd, 'data'
 
 mail_reader = Meta::MailReader::Client.new attachment_root_dir: attachment_root_dir
-mail_handler = Meta::MailReader::Handler.new
-
-mail_reader.on :attachment do |mail, attachment, attachment_path|
-  mail_handler.new_attachment mail, attachment, attachment_path
-end
 
 if $PROGRAM_NAME == __FILE__
   loop do

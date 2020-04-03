@@ -6,17 +6,14 @@ module Meta
       # The maximum amount of attachments we will process per e-mail.
       MAX_ATTACHMENT_COUNT = 10
 
+      # Creates a new Client
       def initialize attachment_root_dir:
         @log = Logging.logger[self]
-        @callbacks = {}
+        @handler = Handler.new
         @attachment_root_dir = attachment_root_dir
 
         @log.info "MailReader version #{Meta::MailReader::VERSION}"
         @log.debug "Attachments will be saved in `#{attachment_root_dir}'"
-      end
-
-      def on event, &block
-        (@callbacks[event] ||= []) << block
       end
 
       # Polls the inbox for new e-mails, yields them in the related callbacks and
@@ -27,36 +24,29 @@ module Meta
 
           if attachment_count.zero?
             @log.info "Skipping e-mail #{mail.subject} from #{mail.from} as " \
-              'this e-mail has no attachments'
+              'it has no attachments'
             next
           end
 
           @log.info "Received e-mail #{mail.subject} from #{mail.from} with " \
-            "#{mail.attachments.count} attachments"
+            "#{attachment_count} attachments"
 
           process_mail mail
         end
       end
 
+      # Processes the given +mail+ and its attachments.
       def process_mail mail
-        mail.attachments.slice(0...MAX_ATTACHMENT_COUNT).each do |attachment|
-          process_mail_attachment mail, attachment
+        mail.attachments.slice(0...MAX_ATTACHMENT_COUNT).map do |attachment|
+          attachment_path = save_attachment_to_disk attachment
+
+          Attachment.new attachment_path
         end
       end
 
-      def process_mail_attachment mail, attachment
-        attachment_path = save_attachment attachment
-        @log.debug "Saved attachment as #{attachment_path}"
-
-        emit :attachment, mail, attachment, attachment_path
-      rescue StandardError => error
-        @log.error 'Failed to process attachment!'
-        @log.error error
-      end
-
-      # Writes the attachment body to temporary storage and then yields the file
-      # path.
-      def save_attachment attachment
+      # Writes the attachment body to temporary storage and then returns the
+      # file path.
+      def save_attachment_to_disk attachment
         filename = sanitize_filename attachment.filename
         path = File.join @attachment_root_dir, filename
 
@@ -64,7 +54,6 @@ module Meta
           file.write attachment.body.decoded
         end
 
-        yield path if block_given?
         path
       end
 
@@ -72,10 +61,6 @@ module Meta
 
       def sanitize_filename filename
         filename.gsub(/[^a-zA-Z0-9\-_\.]+/, '')
-      end
-
-      def emit event, *args
-        @callbacks[event].each { |p| p.call *args }
       end
     end
   end

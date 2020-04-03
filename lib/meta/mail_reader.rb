@@ -38,12 +38,17 @@ Logging.appenders.stdout(
 Logging.logger.root.level = :debug
 Logging.logger.root.appenders = Logging.appenders.stdout
 
+module Meta
+  module MailReader
+    # There was an error running one of the processing stages of a pipeline.
+    class PipelineProcessError < StandardError; end
+    class PipelineNotFoundError < StandardError; end
+  end
+end
+
 require_relative './mail_reader/client'
+require_relative './mail_reader/attachment'
+require_relative './mail_reader/attachment_list'
 require_relative './mail_reader/handler'
 require_relative './mail_reader/post_processor'
 require_relative './mail_reader/version'
-
-module Meta
-  module MailReader
-  end
-end

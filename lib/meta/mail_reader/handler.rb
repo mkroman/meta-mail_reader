@@ -2,10 +2,6 @@
 
 module Meta
   module MailReader
-    # There was an error running one of the processing stages of a pipeline.
-    class PipelineProcessError < StandardError; end
-    class PipelineNotFoundError < StandardError; end
-
     class Handler
       VIDEO_MIME_TYPES = %w[video/mp4 video/webm video/quicktime
                             video/x-ms-asf].freeze
@@ -18,12 +14,7 @@ module Meta
 
       def initialize
         @log = Logging.logger[self]
-        @s3 = Aws::S3::Client.new
-        @bucket_name = ENV['S3_BUCKET_NAME']
-      end
-
-      def meta_console
-        TCPSocket.open 'localhost', 31337
+        @bucket = Bucket.new ENV['S3_BUCKET_NAME']
       end
 
       # Called by the +MailReader+ for each attachment in a newly received e-mail.
@@ -91,31 +82,7 @@ module Meta
       end
 
       def upload_mail_attachment mail, attachment, attachment_path
-        filename = File.basename attachment_path
-        hexdigest = Digest::SHA256.file(attachment_path).hexdigest
-        extension = File.extname filename
-        remote_filename = "#{hexdigest}#{extension}"
-        key = File.join 'mails', remote_filename
-
-        @log.info "Uploading #{attachment_path} to bucket #{@bucket_name} with the key #{key}"
-
-        begin
-          object = @s3.head_object bucket: @bucket_name, key: key
-
-          @log.debug 'The remote file already exists - skipping upload'
-        rescue Aws::S3::Errors::Forbidden
-          # The file doesn't already exist, so we'll upload it
-          File.open attachment_path, 'rb' do |file|
-            object = @s3.put_object body: file,
-                                    acl: 'public-read',
-                                    bucket: @bucket_name,
-                                    key: key
-          end
-        end
-
-        return nil unless object
-
-        key
+        @bucket.upload_attachment attachment_path
       end
 
       # Determines the file type of the file at +path+ and returns the type as a
