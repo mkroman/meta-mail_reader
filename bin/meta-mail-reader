@@ -43,10 +43,11 @@ Logging.logger.root.appenders = Logging.appenders.stdout
 
 require 'meta/mail_reader'
 require 'meta/mail_handler'
+require 'meta/rpc'
 require 'meta/postprocessor'
 require 'meta/version'
 
-REQUIRED_ENV_KEYS = %w[AWS_SECRET_KEY AWS_ACCESS_KEY S3_BUCKET_NAME].freeze
+REQUIRED_ENV_KEYS = %w[AWS_SECRET_KEY AWS_ACCESS_KEY S3_BUCKET_NAME RPC_SECRET].freeze
 REQUIRED_ENV_KEYS.each do |name|
   unless ENV.key? name
     raise 'The following environment keys are required: ' \

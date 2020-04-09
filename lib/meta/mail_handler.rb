@@ -18,11 +18,20 @@ module Meta
     def initialize
       @log = Logging.logger[self]
       @s3 = Aws::S3::Client.new
+      @rpc = Meta::RPC::Client.new 'tcp://localhost:31337', ENV['RPC_SECRET']
       @bucket_name = ENV['S3_BUCKET_NAME']
     end
 
-    def meta_console
-      TCPSocket.open 'localhost', 31337
+    def send_chat_message message
+      @rpc.connect
+
+      params = {
+        'network' => '*',
+        'channel' => '#uplink',
+        'message' => message
+      }
+
+      @rpc.call 'message', params
     end
 
     # Called by the +MailReader+ for each attachment in a newly received e-mail.
@@ -46,9 +55,9 @@ module Meta
           @log.debug "File has been uploaded and can be accessed at #{url}"
 
           if mail.subject && !mail.subject.empty?
-            meta_console.puts "\x0310> “\x0f#{mail.subject}\x0310” from\x0f #{sender}\x0310 @ #{url}"
+            send_chat_message "\x0310> “\x0f#{mail.subject}\x0310” from\x0f #{sender}\x0310 @ #{url}"
           else
-            meta_console.puts "\x0310>\x0f Mail\x0310 from #{sender}\x0310 @ #{url}"
+            send_chat_message "\x0310>\x0f Mail\x0310 from #{sender}\x0310 @ #{url}"
           end
         end
 

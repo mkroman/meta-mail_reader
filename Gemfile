@@ -7,6 +7,8 @@ gem 'streamio-ffmpeg', '~> 3.0'
 gem 'aws-sdk-s3', '~> 1.31'
 gem 'nanoid', '~> 2.0'
 
+gem 'meta-rpc_client', git: 'https://github.com/mkroman/meta-rpc_client.git'
+
 group :development do
   gem 'rspec', '~> 3.9'
 end
