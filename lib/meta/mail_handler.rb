@@ -27,7 +27,7 @@ module Meta
 
       params = {
         'network' => '*',
-        'channel' => '#blur',
+        'channel' => '#uplink',
         'message' => message
       }
 
