@@ -27,7 +27,7 @@ module Meta
 
       params = {
         'network' => '*',
-        'channel' => '#uplink',
+        'channel' => '#blur',
         'message' => message
       }
 
@@ -50,6 +50,11 @@ module Meta
         if result
           object = Aws::S3::Object.new @bucket_name, result, client: @s3
           url = object.public_url
+          url = URI url
+
+          url.host = 'mails.uplink.io'
+          url.path = '/' + File.basename(url.path)
+
           sender = mail.from.join ', '
 
           @log.debug "File has been uploaded and can be accessed at #{url}"
