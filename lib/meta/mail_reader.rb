@@ -1,4 +1,22 @@
 # frozen_string_literal: true
+module Mail
+  module Matchers
+    def an_attachment_with_mime_type(filename)
+      AttachmentMimeTypeMatcher.new(filename)
+    end
+
+    class AttachmentMimeTypeMatcher
+      attr_reader :mime_type
+      def initialize(mime_type)
+        @mime_type = mime_type
+      end
+
+      def ===(other)
+        other.attachment? && other.mime_type == mime_type
+      end
+    end
+  end
+end
 
 module Meta
   class MailReader
