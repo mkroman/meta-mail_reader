@@ -1,4 +1,4 @@
-FROM ruby:2.6
+FROM ruby:2.7.6
 MAINTAINER Mikkel Kroman <mk@maero.dk>
 
 # Install dependencies.
@@ -22,4 +22,4 @@ COPY . .
 RUN mkdir data && \
   bundle install
 
-ENTRYPOINT ruby /usr/src/app/bin/meta-mail-reader
+ENTRYPOINT bundle exec ruby /usr/src/app/bin/meta-mail-reader
