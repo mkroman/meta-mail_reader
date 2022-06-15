@@ -118,11 +118,15 @@ module Meta
         @log.debug 'The remote file already exists - skipping upload'
       rescue Aws::S3::Errors::Forbidden
         # The file doesn't already exist, so we'll upload it
+        mime_type = Magic.guess_file_mime_type attachment_path
+
         File.open attachment_path, 'rb' do |file|
           object = @s3.put_object body: file,
                                   acl: 'public-read',
                                   bucket: @bucket_name,
-                                  key: key
+                                  key: key,
+                                  content_type: mime_type,
+                                  content_disposition: 'inline'
         end
       end
 
